@@ -1,951 +1,911 @@
--- Library Core
 local Library = {}
-Library.__index = Library
 
--- Default settings
-local defaultSettings = {
-    Themes = {
-        Purple = {
-            Main = Color3.fromRGB(64, 0, 128),
-            Secondary = Color3.fromRGB(96, 0, 192),
-            Text = Color3.fromRGB(255, 255, 255),
-            Background = Color3.fromRGB(20, 20, 20),
-            Accent = Color3.fromRGB(128, 0, 255),
-            LightAccent = Color3.fromRGB(160, 80, 255),
-            DarkAccent = Color3.fromRGB(32, 0, 64)
-        }
-    },
-    Icons = {
-        Home = "rbxassetid://1234567890",
-        Settings = "rbxassetid://1234567891",
-        Info = "rbxassetid://1234567892"
-    },
-    Scale = 1
+-- Configurações iniciais
+Library.Version = "1.0.0"
+Library.Author = "CLEITI6966"
+Library.Theme = {
+    Primary = Color3.fromRGB(155, 89, 182), -- Roxo
+    Secondary = Color3.fromRGB(44, 44, 44),  -- Cinza escuro
+    Background = Color3.fromRGB(37, 37, 37), -- Fundo
+    Text = Color3.fromRGB(255, 255, 255),   -- Branco
+    Discord = Color3.fromRGB(114, 137, 218)  -- Azul Discord
 }
 
--- Initialize library
-function Library.new()
-    local self = setmetatable({}, Library)
-    
-    self.Themes = defaultSettings.Themes
-    self.Icons = defaultSettings.Icons
-    self.Scale = defaultSettings.Scale
-    self.CurrentTheme = "Purple"
-    self.Windows = {}
-    
-    return self
-end
+-- Variáveis internas
+local Tabs = {}
+local CurrentTab = nil
+local ScreenGui = nil
+local MainWindow = nil
 
--- Library functions
-function Library:GetIcon(iconName)
-    return self.Icons[iconName] or ""
-end
+-- Função para criar a GUI principal
+function Library:CreateWindow(Title)
+    -- Cria a ScreenGui
+    ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "Cleiti6966HubsLibrary"
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.Parent = game:GetService("CoreGui")
 
-function Library:SetTheme(themeName)
-    if self.Themes[themeName] then
-        self.CurrentTheme = themeName
-        -- Update all existing windows with new theme
-        for _, window in pairs(self.Windows) do
-            window:UpdateTheme(self.Themes[themeName])
+    -- Cria a janela principal
+    MainWindow = Instance.new("Frame")
+    MainWindow.Name = "MainWindow"
+    MainWindow.Size = UDim2.new(0, 700, 0, 500)
+    MainWindow.Position = UDim2.new(0.5, -350, 0.5, -250)
+    MainWindow.BackgroundColor3 = Library.Theme.Background
+    MainWindow.BorderSizePixel = 0
+    MainWindow.ClipsDescendants = true
+    MainWindow.Parent = ScreenGui
+
+    -- Cria o cabeçalho da janela
+    local Header = Instance.new("Frame")
+    Header.Name = "Header"
+    Header.Size = UDim2.new(1, 0, 0, 40)
+    Header.Position = UDim2.new(0, 0, 0, 0)
+    Header.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+    Header.BorderSizePixel = 0
+    Header.Parent = MainWindow
+
+    -- Título da janela
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Name = "Title"
+    TitleLabel.Size = UDim2.new(0, 200, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 20, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = Title or "CLEITI6966 HUBS LIBRARY"
+    TitleLabel.TextColor3 = Library.Theme.Text
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextSize = 16
+    TitleLabel.Parent = Header
+
+    -- Autor
+    local AuthorLabel = Instance.new("TextLabel")
+    AuthorLabel.Name = "Author"
+    AuthorLabel.Size = UDim2.new(0, 100, 1, 0)
+    AuthorLabel.Position = UDim2.new(0, 220, 0, 0)
+    AuthorLabel.BackgroundTransparency = 1
+    AuthorLabel.Text = "by: " .. Library.Author
+    AuthorLabel.TextColor3 = Library.Theme.Primary
+    AuthorLabel.TextXAlignment = Enum.TextXAlignment.Left
+    AuthorLabel.Font = Enum.Font.Gotham
+    AuthorLabel.TextSize = 12
+    AuthorLabel.Parent = Header
+
+    -- Botões de controle da janela
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Name = "CloseButton"
+    CloseButton.Size = UDim2.new(0, 20, 0, 20)
+    CloseButton.Position = UDim2.new(1, -30, 0.5, -10)
+    CloseButton.BackgroundColor3 = Color3.fromRGB(255, 82, 82)
+    CloseButton.BorderSizePixel = 0
+    CloseButton.Text = ""
+    CloseButton.Parent = Header
+    
+    CloseButton.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+
+    local MinimizeButton = Instance.new("TextButton")
+    MinimizeButton.Name = "MinimizeButton"
+    MinimizeButton.Size = UDim2.new(0, 20, 0, 20)
+    MinimizeButton.Position = UDim2.new(1, -60, 0.5, -10)
+    MinimizeButton.BackgroundColor3 = Color3.fromRGB(255, 189, 46)
+    MinimizeButton.BorderSizePixel = 0
+    MinimizeButton.Text = ""
+    MinimizeButton.Parent = Header
+
+    -- Barra de abas
+    local TabBar = Instance.new("Frame")
+    TabBar.Name = "TabBar"
+    TabBar.Size = UDim2.new(0, 160, 1, -40)
+    TabBar.Position = UDim2.new(0, 0, 0, 40)
+    TabBar.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+    TabBar.BorderSizePixel = 0
+    TabBar.Parent = MainWindow
+
+    -- Área de conteúdo
+    local ContentArea = Instance.new("Frame")
+    ContentArea.Name = "ContentArea"
+    ContentArea.Size = UDim2.new(1, -160, 1, -40)
+    ContentArea.Position = UDim2.new(0, 160, 0, 40)
+    ContentArea.BackgroundColor3 = Library.Theme.Secondary
+    ContentArea.BorderSizePixel = 0
+    ContentArea.Parent = MainWindow
+
+    -- Botão flutuante para minimizar
+    local FloatingButton = Instance.new("TextButton")
+    FloatingButton.Name = "FloatingButton"
+    FloatingButton.Size = UDim2.new(0, 30, 0, 30)
+    FloatingButton.Position = UDim2.new(0, 10, 0.5, -15)
+    FloatingButton.BackgroundColor3 = Library.Theme.Primary
+    FloatingButton.BorderColor3 = Library.Theme.Text
+    FloatingButton.BorderSizePixel = 2
+    FloatingButton.Text = ""
+    FloatingButton.Visible = false
+    FloatingButton.Parent = ScreenGui
+
+    local MinimizeLine = Instance.new("Frame")
+    MinimizeLine.Name = "MinimizeLine"
+    MinimizeLine.Size = UDim2.new(0, 16, 0, 2)
+    MinimizeLine.Position = UDim2.new(0.5, -8, 0.5, -1)
+    MinimizeLine.BackgroundColor3 = Library.Theme.Text
+    MinimizeLine.BorderSizePixel = 0
+    MinimizeLine.Parent = FloatingButton
+
+    -- Configurar eventos para minimizar
+    local isMinimized = false
+    MinimizeButton.MouseButton1Click:Connect(function()
+        isMinimized = not isMinimized
+        if isMinimized then
+            MainWindow.Visible = false
+            FloatingButton.Visible = true
+        else
+            MainWindow.Visible = true
+            FloatingButton.Visible = false
         end
-    end
-end
+    end)
 
-function Library:SetScale(scale)
-    self.Scale = math.clamp(scale, 0.5, 2)
-    -- Update all existing windows with new scale
-    for _, window in pairs(self.Windows) do
-        window:UpdateScale(self.Scale)
-    end
-end
+    FloatingButton.MouseButton1Click:Connect(function()
+        isMinimized = false
+        MainWindow.Visible = true
+        FloatingButton.Visible = false
+    end)
 
-function Library:MakeWindow(config)
-    local window = Window.new(config, self.Themes[self.CurrentTheme], self.Scale)
-    table.insert(self.Windows, window)
-    return window
-end
-
--- Window class
-local Window = {}
-Window.__index = Window
-
-function Window.new(config, theme, scale)
-    local self = setmetatable({}, Window)
-    
-    self.Title = config.Title or "Window"
-    self.SubTitle = config.SubTitle or ""
-    self.SaveFolder = config.SaveFolder or false
-    self.Theme = theme
-    self.Scale = scale
-    self.Tabs = {}
-    self.Visible = true
-    
-    -- Create the actual GUI elements here (ScreenGui, Frame, etc.)
-    -- This is simplified for the example
-    self.Gui = Instance.new("ScreenGui")
-    self.MainFrame = Instance.new("Frame")
-    self.MainFrame.Parent = self.Gui
-    self.MainFrame.BackgroundColor3 = theme.Background
-    
-    self.TitleLabel = Instance.new("TextLabel")
-    self.TitleLabel.Parent = self.MainFrame
-    self.TitleLabel.Text = self.Title
-    self.TitleLabel.TextColor3 = theme.Text
-    
-    self.SubTitleLabel = Instance.new("TextLabel")
-    self.SubTitleLabel.Parent = self.MainFrame
-    self.SubTitleLabel.Text = self.SubTitle
-    self.SubTitleLabel.TextColor3 = theme.Text
-    
-    -- Apply scale
-    self:UpdateScale(scale)
-    self:UpdateTheme(theme)
-    
-    return self
-end
-
-function Window:UpdateTheme(theme)
-    self.Theme = theme
-    self.MainFrame.BackgroundColor3 = theme.Background
-    self.TitleLabel.TextColor3 = theme.Text
-    self.SubTitleLabel.TextColor3 = theme.Text
-    -- Update all tabs and their elements
-    for _, tab in pairs(self.Tabs) do
-        tab:UpdateTheme(theme)
-    end
-end
-
-function Window:UpdateScale(scale)
-    self.Scale = scale
-    -- Update all GUI elements with new scale
-    -- This would adjust sizes and positions
-end
-
-function Window:MakeTab(config)
-    local tab = Tab.new(config, self.Theme, self.Scale)
-    table.insert(self.Tabs, tab)
-    return tab
-end
-
-function Window:CloseBtn()
-    -- Show confirmation dialog then close
-    self:Destroy()
-end
-
-function Window:MinimizeBtn()
-    self.Visible = not self.Visible
-    self.Gui.Enabled = self.Visible
-end
-
-function Window:Minimize()
-    self.Visible = false
-    self.Gui.Enabled = false
-end
-
-function Window:Set(title, subtitle)
-    self.Title = title or self.Title
-    self.SubTitle = subtitle or self.SubTitle
-    self.TitleLabel.Text = self.Title
-    self.SubTitleLabel.Text = self.SubTitle
-end
-
-function Window:SelectTab(tabName)
-    for _, tab in pairs(self.Tabs) do
-        tab:SetVisible(tab.Title == tabName)
-    end
-end
-
-function Window:Destroy()
-    self.Gui:Destroy()
-    for i, window in pairs(Library.Windows) do
-        if window == self then
-            table.remove(Library.Windows, i)
-            break
+    -- Retornar funções para adicionar abas e controles
+    return {
+        AddTab = function(TabName, Icon)
+            return Library:AddTab(TabName, Icon)
+        end,
+        Close = function()
+            ScreenGui:Destroy()
         end
-    end
+    }
 end
 
--- Tab class
-local Tab = {}
-Tab.__index = Tab
-
-function Tab.new(config, theme, scale)
-    local self = setmetatable({}, Tab)
+-- Função para adicionar uma nova aba
+function Library:AddTab(TabName, Icon)
+    local TabBar = MainWindow:FindFirstChild("TabBar")
+    local ContentArea = MainWindow:FindFirstChild("ContentArea")
     
-    self.Title = config.Title or "Tab"
-    self.Icon = config.Icon or ""
-    self.Theme = theme
-    self.Scale = scale
-    self.Enabled = true
-    self.Visible = true
-    self.Sections = {}
-    self.Elements = {}
+    if not TabBar or not ContentArea then return end
     
-    -- Create GUI elements
-    self.TabButton = Instance.new("TextButton")
-    self.TabButton.Text = self.Title
-    self.TabButton.TextColor3 = theme.Text
+    local TabCount = #Tabs + 1
     
-    self.ContentFrame = Instance.new("Frame")
-    self.ContentFrame.BackgroundColor3 = theme.Background
+    -- Criar botão da aba
+    local TabButton = Instance.new("TextButton")
+    TabButton.Name = "Tab_" .. TabName
+    TabButton.Size = UDim2.new(0, 140, 0, 40)
+    TabButton.Position = UDim2.new(0, 10, 0, 60 + (TabCount - 1) * 50)
+    TabButton.BackgroundColor3 = TabCount == 1 and Library.Theme.Primary or Library.Theme.Secondary
+    TabButton.BorderSizePixel = 0
+    TabButton.Text = ""
+    TabButton.Parent = TabBar
     
-    return self
-end
-
-function Tab:UpdateTheme(theme)
-    self.Theme = theme
-    self.TabButton.TextColor3 = theme.Text
-    self.ContentFrame.BackgroundColor3 = theme.Background
-    -- Update all sections and elements
-    for _, section in pairs(self.Sections) do
-        section:UpdateTheme(theme)
+    -- Ícone da aba
+    if Icon then
+        local TabIcon = Instance.new("ImageLabel")
+        TabIcon.Name = "Icon"
+        TabIcon.Size = UDim2.new(0, 20, 0, 20)
+        TabIcon.Position = UDim2.new(0, 10, 0.5, -10)
+        TabIcon.BackgroundTransparency = 1
+        TabIcon.Image = Icon
+        TabIcon.Parent = TabButton
+    else
+        local TabIcon = Instance.new("Frame")
+        TabIcon.Name = "Icon"
+        TabIcon.Size = UDim2.new(0, 20, 0, 20)
+        TabIcon.Position = UDim2.new(0, 10, 0.5, -10)
+        TabIcon.BackgroundColor3 = Library.Theme.Text
+        TabIcon.BackgroundTransparency = 0.8
+        TabIcon.Parent = TabButton
     end
-    for _, element in pairs(self.Elements) do
-        if element.UpdateTheme then
-            element:UpdateTheme(theme)
+    
+    -- Texto da aba
+    local TabText = Instance.new("TextLabel")
+    TabText.Name = "Text"
+    TabText.Size = UDim2.new(0, 80, 1, 0)
+    TabText.Position = UDim2.new(0, 40, 0, 0)
+    TabText.BackgroundTransparency = 1
+    TabText.Text = TabName
+    TabText.TextColor3 = Library.Theme.Text
+    TabText.TextXAlignment = Enum.TextXAlignment.Left
+    TabText.Font = Enum.Font.Gotham
+    TabText.TextSize = 14
+    TabText.Parent = TabButton
+    
+    -- Criar frame de conteúdo
+    local TabContent = Instance.new("ScrollingFrame")
+    TabContent.Name = "Tab_" .. TabName .. "_Content"
+    TabContent.Size = UDim2.new(1, 0, 1, 0)
+    TabContent.Position = UDim2.new(0, 0, 0, 0)
+    TabContent.BackgroundTransparency = 1
+    TabContent.BorderSizePixel = 0
+    TabContent.ScrollBarThickness = 5
+    TabContent.Visible = TabCount == 1
+    TabContent.Parent = ContentArea
+    
+    local UIListLayout = Instance.new("UIListLayout")
+    UIListLayout.Padding = UDim.new(0, 10)
+    UIListLayout.Parent = TabContent
+    
+    -- Configurar evento de clique
+    TabButton.MouseButton1Click:Connect(function()
+        for _, tab in pairs(Tabs) do
+            tab.Button.BackgroundColor3 = Library.Theme.Secondary
+            tab.Content.Visible = false
         end
-    end
-end
-
-function Tab:AddSection(config)
-    local section = Section.new(config, self.Theme, self.Scale)
-    table.insert(self.Sections, section)
-    return section
-end
-
-function Tab:AddParagraph(config)
-    local paragraph = Paragraph.new(config, self.Theme, self.Scale)
-    table.insert(self.Elements, paragraph)
-    return paragraph
-end
-
-function Tab:AddButton(config)
-    local button = Button.new(config, self.Theme, self.Scale)
-    table.insert(self.Elements, button)
-    return button
-end
-
-function Tab:AddToggle(config)
-    local toggle = Toggle.new(config, self.Theme, self.Scale)
-    table.insert(self.Elements, toggle)
-    return toggle
-end
-
-function Tab:AddDropdown(config)
-    local dropdown = Dropdown.new(config, self.Theme, self.Scale)
-    table.insert(self.Elements, dropdown)
-    return dropdown
-end
-
-function Tab:AddSlider(config)
-    local slider = Slider.new(config, self.Theme, self.Scale)
-    table.insert(self.Elements, slider)
-    return slider
-end
-
-function Tab:AddTextBox(config)
-    local textbox = TextBox.new(config, self.Theme, self.Scale)
-    table.insert(self.Elements, textbox)
-    return textbox
-end
-
-function Tab:Disable()
-    self.Enabled = false
-    self.TabButton.Visible = false
-    self.ContentFrame.Visible = false
-end
-
-function Tab:Enable()
-    self.Enabled = true
-    self.TabButton.Visible = true
-    self.ContentFrame.Visible = self.Visible
-end
-
-function Tab:SetVisible(visible)
-    self.Visible = visible
-    self.ContentFrame.Visible = visible and self.Enabled
-end
-
-function Tab:Destroy()
-    self.TabButton:Destroy()
-    self.ContentFrame:Destroy()
-    for i, tab in pairs(Window.Tabs) do
-        if tab == self then
-            table.remove(Window.Tabs, i)
-            break
-        end
-    end
-end
-
--- Section class
-local Section = {}
-Section.__index = Section
-
-function Section.new(config, theme, scale)
-    local self = setmetatable({}, Section)
-    
-    self.Title = config.Title or "Section"
-    self.Theme = theme
-    self.Scale = scale
-    self.Visible = true
-    
-    -- Create GUI elements
-    self.Frame = Instance.new("Frame")
-    self.Frame.BackgroundColor3 = theme.DarkAccent
-    
-    self.TitleLabel = Instance.new("TextLabel")
-    self.TitleLabel.Text = self.Title
-    self.TitleLabel.TextColor3 = theme.Text
-    self.TitleLabel.Parent = self.Frame
-    
-    return self
-end
-
-function Section:UpdateTheme(theme)
-    self.Theme = theme
-    self.Frame.BackgroundColor3 = theme.DarkAccent
-    self.TitleLabel.TextColor3 = theme.Text
-end
-
-function Section:SetVisible(visible)
-    self.Visible = visible
-    self.Frame.Visible = visible
-end
-
-function Section:Set(title)
-    self.Title = title or self.Title
-    self.TitleLabel.Text = self.Title
-end
-
-function Section:Destroy()
-    self.Frame:Destroy()
-end
-
--- Paragraph class
-local Paragraph = {}
-Paragraph.__index = Paragraph
-
-function Paragraph.new(config, theme, scale)
-    local self = setmetatable({}, Paragraph)
-    
-    self.Title = config.Title or "Paragraph"
-    self.Text = config.Text or ""
-    self.Theme = theme
-    self.Scale = scale
-    self.Visible = true
-    
-    -- Create GUI elements
-    self.Frame = Instance.new("Frame")
-    self.Frame.BackgroundTransparency = 1
-    
-    self.TitleLabel = Instance.new("TextLabel")
-    self.TitleLabel.Text = self.Title
-    self.TitleLabel.TextColor3 = theme.Text
-    self.TitleLabel.Parent = self.Frame
-    
-    self.TextLabel = Instance.new("TextLabel")
-    self.TextLabel.Text = self.Text
-    self.TextLabel.TextColor3 = theme.Text
-    self.TextLabel.Parent = self.Frame
-    
-    return self
-end
-
-function Paragraph:UpdateTheme(theme)
-    self.Theme = theme
-    self.TitleLabel.TextColor3 = theme.Text
-    self.TextLabel.TextColor3 = theme.Text
-end
-
-function Paragraph:SetVisible(visible)
-    self.Visible = visible
-    self.Frame.Visible = visible
-end
-
-function Paragraph:Set(title, text)
-    self.Title = title or self.Title
-    self.Text = text or self.Text
-    self.TitleLabel.Text = self.Title
-    self.TextLabel.Text = self.Text
-end
-
-function Paragraph:SetTitle(title)
-    self.Title = title or self.Title
-    self.TitleLabel.Text = self.Title
-end
-
-function Paragraph:SetDesc(text)
-    self.Text = text or self.Text
-    self.TextLabel.Text = self.Text
-end
-
-function Paragraph:Destroy()
-    self.Frame:Destroy()
-end
-
--- Button class
-local Button = {}
-Button.__index = Button
-
-function Button.new(config, theme, scale)
-    local self = setmetatable({}, Button)
-    
-    self.Title = config.Title or "Button"
-    self.Desc = config.Desc or ""
-    self.Callback = config.Callback or function() end
-    self.Theme = theme
-    self.Scale = scale
-    self.Visible = true
-    
-    -- Create GUI elements
-    self.Frame = Instance.new("Frame")
-    self.Frame.BackgroundColor3 = theme.Secondary
-    
-    self.Button = Instance.new("TextButton")
-    self.Button.Text = self.Title
-    self.Button.TextColor3 = theme.Text
-    self.Button.BackgroundColor3 = theme.Accent
-    self.Button.Parent = self.Frame
-    
-    self.DescLabel = Instance.new("TextLabel")
-    self.DescLabel.Text = self.Desc
-    self.DescLabel.TextColor3 = theme.Text
-    self.DescLabel.Parent = self.Frame
-    
-    self.Button.MouseButton1Click:Connect(function()
-        self.Callback()
+        TabButton.BackgroundColor3 = Library.Theme.Primary
+        TabContent.Visible = true
+        CurrentTab = TabName
     end)
     
-    return self
+    -- Adicionar à lista de abas
+    local TabData = {
+        Name = TabName,
+        Button = TabButton,
+        Content = TabContent
+    }
+    
+    table.insert(Tabs, TabData)
+    
+    if TabCount == 1 then
+        CurrentTab = TabName
+    end
+    
+    -- Retornar funções para adicionar controles
+    return {
+        AddSection = function(SectionName)
+            return Library:AddSection(TabContent, SectionName)
+        end,
+        AddButton = function(ButtonName, Callback)
+            return Library:AddButton(TabContent, ButtonName, Callback)
+        end,
+        AddToggle = function(ToggleName, Default, Callback)
+            return Library:AddToggle(TabContent, ToggleName, Default, Callback)
+        end,
+        AddDropdown = function(DropdownName, Options, Default, Callback)
+            return Library:AddDropdown(TabContent, DropdownName, Options, Default, Callback)
+        end,
+        AddSlider = function(SliderName, Min, Max, Default, Callback)
+            return Library:AddSlider(TabContent, SliderName, Min, Max, Default, Callback)
+        end,
+        AddTextBox = function(TextBoxName, Placeholder, Callback)
+            return Library:AddTextBox(TabContent, TextBoxName, Placeholder, Callback)
+        end,
+        AddLabel = function(LabelText)
+            return Library:AddLabel(TabContent, LabelText)
+        end,
+        AddDiscordInvite = function(ServerId, ServerIcon, ServerName)
+            return Library:AddDiscordInvite(TabContent, ServerId, ServerIcon, ServerName)
+        end
+    }
 end
 
-function Button:UpdateTheme(theme)
-    self.Theme = theme
-    self.Frame.BackgroundColor3 = theme.Secondary
-    self.Button.TextColor3 = theme.Text
-    self.Button.BackgroundColor3 = theme.Accent
-    self.DescLabel.TextColor3 = theme.Text
+-- Função para adicionar uma seção
+function Library:AddSection(Parent, SectionName)
+    local Section = Instance.new("Frame")
+    Section.Name = "Section"
+    Section.Size = UDim2.new(1, -40, 0, 30)
+    Section.Position = UDim2.new(0, 20, 0, 20)
+    Section.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+    Section.BorderSizePixel = 0
+    Section.Parent = Parent
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 5)
+    Corner.Parent = Section
+    
+    local SectionText = Instance.new("TextLabel")
+    SectionText.Name = "Text"
+    SectionText.Size = UDim2.new(1, -20, 1, 0)
+    SectionText.Position = UDim2.new(0, 10, 0, 0)
+    SectionText.BackgroundTransparency = 1
+    SectionText.Text = SectionName
+    SectionText.TextColor3 = Library.Theme.Text
+    SectionText.TextXAlignment = Enum.TextXAlignment.Left
+    SectionText.Font = Enum.Font.Gotham
+    SectionText.TextSize = 14
+    SectionText.Parent = Section
+    
+    return Section
 end
 
-function Button:SetVisible(visible)
-    self.Visible = visible
-    self.Frame.Visible = visible
+-- Função para adicionar um parágrafo
+function Library:AddParagraph(Parent, Title, Text)
+    local Paragraph = Instance.new("Frame")
+    Paragraph.Name = "Paragraph"
+    Paragraph.Size = UDim2.new(1, -40, 0, 70)
+    Paragraph.Position = UDim2.new(0, 20, 0, 20)
+    Paragraph.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+    Paragraph.BorderSizePixel = 0
+    Paragraph.Parent = Parent
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 5)
+    Corner.Parent = Paragraph
+    
+    local TitleText = Instance.new("TextLabel")
+    TitleText.Name = "Title"
+    TitleText.Size = UDim2.new(1, -20, 0, 20)
+    TitleText.Position = UDim2.new(0, 10, 0, 10)
+    TitleText.BackgroundTransparency = 1
+    TitleText.Text = Title
+    TitleText.TextColor3 = Library.Theme.Text
+    TitleText.TextXAlignment = Enum.TextXAlignment.Left
+    TitleText.Font = Enum.Font.GothamBold
+    TitleText.TextSize = 14
+    TitleText.Parent = Paragraph
+    
+    local ContentText = Instance.new("TextLabel")
+    ContentText.Name = "Content"
+    ContentText.Size = UDim2.new(1, -20, 0, 40)
+    ContentText.Position = UDim2.new(0, 10, 0, 30)
+    ContentText.BackgroundTransparency = 1
+    ContentText.Text = Text
+    ContentText.TextColor3 = Color3.fromRGB(170, 170, 170)
+    ContentText.TextXAlignment = Enum.TextXAlignment.Left
+    ContentText.Font = Enum.Font.Gotham
+    ContentText.TextSize = 12
+    ContentText.TextWrapped = true
+    ContentText.Parent = Paragraph
+    
+    return Paragraph
 end
 
-function Button:Set(title, desc)
-    self.Title = title or self.Title
-    self.Desc = desc or self.Desc
-    self.Button.Text = self.Title
-    self.DescLabel.Text = self.Desc
+-- Função para adicionar um botão
+function Library:AddButton(Parent, ButtonName, Callback)
+    local ButtonContainer = Instance.new("Frame")
+    ButtonContainer.Name = "Button_" .. ButtonName
+    ButtonContainer.Size = UDim2.new(1, -40, 0, 40)
+    ButtonContainer.Position = UDim2.new(0, 20, 0, 20)
+    ButtonContainer.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+    ButtonContainer.BorderSizePixel = 0
+    ButtonContainer.Parent = Parent
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 5)
+    Corner.Parent = ButtonContainer
+    
+    local Button = Instance.new("TextButton")
+    Button.Name = "Button"
+    Button.Size = UDim2.new(0, 120, 0, 20)
+    Button.Position = UDim2.new(0, 10, 0.5, -10)
+    Button.BackgroundColor3 = Library.Theme.Primary
+    Button.BorderSizePixel = 0
+    Button.Text = ButtonName
+    Button.TextColor3 = Library.Theme.Text
+    Button.Font = Enum.Font.Gotham
+    Button.TextSize = 12
+    Button.Parent = ButtonContainer
+    
+    local ButtonCorner = Instance.new("UICorner")
+    ButtonCorner.CornerRadius = UDim.new(0, 5)
+    ButtonCorner.Parent = Button
+    
+    -- Configurar evento de clique
+    if Callback then
+        Button.MouseButton1Click:Connect(Callback)
+    end
+    
+    return Button
 end
 
-function Button:Callback(func)
-    self.Callback = func or self.Callback
-end
-
-function Button:Destroy()
-    self.Frame:Destroy()
-end
-
--- Toggle class
-local Toggle = {}
-Toggle.__index = Toggle
-
-function Toggle.new(config, theme, scale)
-    local self = setmetatable({}, Toggle)
+-- Função para adicionar um toggle
+function Library:AddToggle(Parent, ToggleName, Default, Callback)
+    local ToggleContainer = Instance.new("Frame")
+    ToggleContainer.Name = "Toggle_" .. ToggleName
+    ToggleContainer.Size = UDim2.new(1, -40, 0, 40)
+    ToggleContainer.Position = UDim2.new(0, 20, 0, 20)
+    ToggleContainer.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+    ToggleContainer.BorderSizePixel = 0
+    ToggleContainer.Parent = Parent
     
-    self.Title = config.Title or "Toggle"
-    self.Desc = config.Desc or ""
-    self.Callback = config.Callback or function() end
-    self.Default = config.Default or false
-    self.Flag = config.Flag or false
-    self.Value = self.Default
-    self.Theme = theme
-    self.Scale = scale
-    self.Visible = true
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 5)
+    Corner.Parent = ToggleContainer
     
-    -- Create GUI elements
-    self.Frame = Instance.new("Frame")
-    self.Frame.BackgroundColor3 = theme.Secondary
+    local ToggleText = Instance.new("TextLabel")
+    ToggleText.Name = "Text"
+    ToggleText.Size = UDim2.new(0, 200, 1, 0)
+    ToggleText.Position = UDim2.new(0, 10, 0, 0)
+    ToggleText.BackgroundTransparency = 1
+    ToggleText.Text = ToggleName
+    ToggleText.TextColor3 = Library.Theme.Text
+    ToggleText.TextXAlignment = Enum.TextXAlignment.Left
+    ToggleText.Font = Enum.Font.Gotham
+    ToggleText.TextSize = 14
+    ToggleText.Parent = ToggleContainer
     
-    self.ToggleButton = Instance.new("TextButton")
-    self.ToggleButton.Text = self.Title
-    self.ToggleButton.TextColor3 = theme.Text
-    self.ToggleButton.Parent = self.Frame
+    local ToggleButton = Instance.new("Frame")
+    ToggleButton.Name = "Toggle"
+    ToggleButton.Size = UDim2.new(0, 30, 0, 20)
+    ToggleButton.Position = UDim2.new(1, -40, 0.5, -10)
+    ToggleButton.BackgroundColor3 = Default and Library.Theme.Primary or Color3.fromRGB(70, 70, 70)
+    ToggleButton.BorderSizePixel = 0
+    ToggleButton.Parent = ToggleContainer
     
-    self.ToggleFrame = Instance.new("Frame")
-    self.ToggleFrame.BackgroundColor3 = self.Value and theme.Accent or theme.DarkAccent
-    self.ToggleFrame.Parent = self.Frame
+    local ToggleCorner = Instance.new("UICorner")
+    ToggleCorner.CornerRadius = UDim.new(0, 10)
+    ToggleCorner.Parent = ToggleButton
     
-    self.DescLabel = Instance.new("TextLabel")
-    self.DescLabel.Text = self.Desc
-    self.DescLabel.TextColor3 = theme.Text
-    self.DescLabel.Parent = self.Frame
+    local ToggleCircle = Instance.new("Frame")
+    ToggleCircle.Name = "Circle"
+    ToggleCircle.Size = UDim2.new(0, 16, 0, 16)
+    ToggleCircle.Position = Default and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+    ToggleCircle.BackgroundColor3 = Library.Theme.Text
+    ToggleCircle.BorderSizePixel = 0
+    ToggleCircle.Parent = ToggleButton
     
-    self.ToggleButton.MouseButton1Click:Connect(function()
-        self:Set(not self.Value)
-    end)
+    local CircleCorner = Instance.new("UICorner")
+    CircleCorner.CornerRadius = UDim.new(0, 8)
+    CircleCorner.Parent = ToggleCircle
     
-    self:Set(self.Default)
+    local isToggled = Default or false
     
-    return self
-end
-
-function Toggle:UpdateTheme(theme)
-    self.Theme = theme
-    self.Frame.BackgroundColor3 = theme.Secondary
-    self.ToggleButton.TextColor3 = theme.Text
-    self.ToggleFrame.BackgroundColor3 = self.Value and theme.Accent or theme.DarkAccent
-    self.DescLabel.TextColor3 = theme.Text
-end
-
-function Toggle:SetVisible(visible)
-    self.Visible = visible
-    self.Frame.Visible = visible
-end
-
-function Toggle:Set(value)
-    self.Value = value
-    self.ToggleFrame.BackgroundColor3 = value and self.Theme.Accent or self.Theme.DarkAccent
-    self.Callback(value)
-end
-
-function Toggle:Set(title, desc)
-    self.Title = title or self.Title
-    self.Desc = desc or self.Desc
-    self.ToggleButton.Text = self.Title
-    self.DescLabel.Text = self.Desc
-end
-
-function Toggle:Callback(func)
-    self.Callback = func or self.Callback
-end
-
-function Toggle:Destroy()
-    self.Frame:Destroy()
-end
-
--- Dropdown class
-local Dropdown = {}
-Dropdown.__index = Dropdown
-
-function Dropdown.new(config, theme, scale)
-    local self = setmetatable({}, Dropdown)
-    
-    self.Title = config.Title or "Dropdown"
-    self.Desc = config.Desc or ""
-    self.Options = config.Options or {}
-    self.Callback = config.Callback or function() end
-    self.Default = config.Default or self.Options[1]
-    self.Flag = config.Flag or false
-    self.MultiSelect = config.MultiSelect or false
-    self.Value = self.MultiSelect and {} or self.Default
-    self.Theme = theme
-    self.Scale = scale
-    self.Visible = true
-    self.Open = false
-    
-    -- Create GUI elements
-    self.Frame = Instance.new("Frame")
-    self.Frame.BackgroundColor3 = theme.Secondary
-    
-    self.DropdownButton = Instance.new("TextButton")
-    self.DropdownButton.Text = self.Title .. ": " .. (self.MultiSelect and "Multiple" or tostring(self.Default))
-    self.DropdownButton.TextColor3 = theme.Text
-    self.DropdownButton.Parent = self.Frame
-    
-    self.DropdownList = Instance.new("ScrollingFrame")
-    self.DropdownList.Visible = false
-    self.DropdownList.BackgroundColor3 = theme.DarkAccent
-    self.DropdownList.Parent = self.Frame
-    
-    self.DescLabel = Instance.new("TextLabel")
-    self.DescLabel.Text = self.Desc
-    self.DescLabel.TextColor3 = theme.Text
-    self.DescLabel.Parent = self.Frame
-    
-    -- Create option buttons
-    self.OptionButtons = {}
-    for _, option in pairs(self.Options) do
-        local button = Instance.new("TextButton")
-        button.Text = option
-        button.TextColor3 = theme.Text
-        button.BackgroundColor3 = theme.Secondary
-        button.Parent = self.DropdownList
+    -- Configurar evento de clique
+    ToggleButton.MouseButton1Click:Connect(function()
+        isToggled = not isToggled
+        ToggleButton.BackgroundColor3 = isToggled and Library.Theme.Primary or Color3.fromRGB(70, 70, 70)
+        ToggleCircle.Position = isToggled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
         
-        button.MouseButton1Click:Connect(function()
-            if self.MultiSelect then
-                if table.find(self.Value, option) then
-                    table.remove(self.Value, table.find(self.Value, option))
-                else
-                    table.insert(self.Value, option)
-                end
-                self.DropdownButton.Text = self.Title .. ": " .. table.concat(self.Value, ", ")
-            else
-                self.Value = option
-                self.DropdownButton.Text = self.Title .. ": " .. option
-                self.DropdownList.Visible = false
-                self.Open = false
+        if Callback then
+            Callback(isToggled)
+        end
+    end)
+    
+    return {
+        Set = function(Value)
+            isToggled = Value
+            ToggleButton.BackgroundColor3 = isToggled and Library.Theme.Primary or Color3.fromRGB(70, 70, 70)
+            ToggleCircle.Position = isToggled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+        end,
+        Get = function()
+            return isToggled
+        end
+    }
+end
+
+-- Função para adicionar um dropdown
+function Library:AddDropdown(Parent, DropdownName, Options, Default, Callback)
+    local DropdownContainer = Instance.new("Frame")
+    DropdownContainer.Name = "Dropdown_" .. DropdownName
+    DropdownContainer.Size = UDim2.new(1, -40, 0, 40)
+    DropdownContainer.Position = UDim2.new(0, 20, 0, 20)
+    DropdownContainer.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+    DropdownContainer.BorderSizePixel = 0
+    DropdownContainer.ClipsDescendants = true
+    DropdownContainer.Parent = Parent
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 5)
+    Corner.Parent = DropdownContainer
+    
+    local DropdownText = Instance.new("TextLabel")
+    DropdownText.Name = "Text"
+    DropdownText.Size = UDim2.new(0, 200, 0, 40)
+    DropdownText.Position = UDim2.new(0, 10, 0, 0)
+    DropdownText.BackgroundTransparency = 1
+    DropdownText.Text = DropdownName
+    DropdownText.TextColor3 = Library.Theme.Text
+    DropdownText.TextXAlignment = Enum.TextXAlignment.Left
+    DropdownText.Font = Enum.Font.Gotham
+    DropdownText.TextSize = 14
+    DropdownText.Parent = DropdownContainer
+    
+    local DropdownButton = Instance.new("TextButton")
+    DropdownButton.Name = "DropdownButton"
+    DropdownButton.Size = UDim2.new(0, 110, 0, 20)
+    DropdownButton.Position = UDim2.new(1, -120, 0.5, -10)
+    DropdownButton.BackgroundColor3 = Color3.fromRGB(51, 51, 51)
+    DropdownButton.BorderColor3 = Library.Theme.Primary
+    DropdownButton.BorderSizePixel = 2
+    DropdownButton.Text = Default or Options[1] or "Select"
+    DropdownButton.TextColor3 = Library.Theme.Text
+    DropdownButton.Font = Enum.Font.Gotham
+    DropdownButton.TextSize = 12
+    DropdownButton.TextXAlignment = Enum.TextXAlignment.Left
+    DropdownButton.Parent = DropdownContainer
+    
+    local DropdownCorner = Instance.new("UICorner")
+    DropdownCorner.CornerRadius = UDim.new(0, 5)
+    DropdownCorner.Parent = DropdownButton
+    
+    local DropdownArrow = Instance.new("TextLabel")
+    DropdownArrow.Name = "Arrow"
+    DropdownArrow.Size = UDim2.new(0, 20, 1, 0)
+    DropdownArrow.Position = UDim2.new(1, -20, 0, 0)
+    DropdownArrow.BackgroundTransparency = 1
+    DropdownArrow.Text = "▼"
+    DropdownArrow.TextColor3 = Library.Theme.Text
+    DropdownArrow.Font = Enum.Font.Gotham
+    DropdownArrow.TextSize = 12
+    DropdownArrow.Parent = DropdownButton
+    
+    local DropdownList = Instance.new("ScrollingFrame")
+    DropdownList.Name = "DropdownList"
+    DropdownList.Size = UDim2.new(0, 110, 0, 0)
+    DropdownList.Position = UDim2.new(1, -120, 0.5, 10)
+    DropdownList.BackgroundColor3 = Color3.fromRGB(51, 51, 51)
+    DropdownList.BorderSizePixel = 0
+    DropdownList.ScrollBarThickness = 5
+    DropdownList.Visible = false
+    DropdownList.Parent = DropdownContainer
+    
+    local ListLayout = Instance.new("UIListLayout")
+    ListLayout.Padding = UDim.new(0, 2)
+    ListLayout.Parent = DropdownList
+    
+    local isOpen = false
+    local selectedOption = Default or Options[1] or nil
+    
+    -- Preencher a lista de opções
+    for i, option in ipairs(Options) do
+        local OptionButton = Instance.new("TextButton")
+        OptionButton.Name = "Option_" .. option
+        OptionButton.Size = UDim2.new(1, 0, 0, 20)
+        OptionButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        OptionButton.BorderSizePixel = 0
+        OptionButton.Text = option
+        OptionButton.TextColor3 = Library.Theme.Text
+        OptionButton.Font = Enum.Font.Gotham
+        OptionButton.TextSize = 12
+        OptionButton.Parent = DropdownList
+        
+        OptionButton.MouseButton1Click:Connect(function()
+            selectedOption = option
+            DropdownButton.Text = option
+            isOpen = false
+            DropdownList.Visible = false
+            DropdownList.Size = UDim2.new(0, 110, 0, 0)
+            
+            if Callback then
+                Callback(option)
             end
-            self.Callback(self.Value)
         end)
-        
-        table.insert(self.OptionButtons, button)
     end
     
-    self.DropdownButton.MouseButton1Click:Connect(function()
-        self.Open = not self.Open
-        self.DropdownList.Visible = self.Open
+    -- Configurar evento para abrir/fechar o dropdown
+    DropdownButton.MouseButton1Click:Connect(function()
+        isOpen = not isOpen
+        DropdownList.Visible = isOpen
+        DropdownList.Size = isOpen and UDim2.new(0, 110, 0, math.min(#Options * 22, 110)) or UDim2.new(0, 110, 0, 0)
+        DropdownArrow.Text = isOpen and "▲" or "▼"
     end)
     
-    return self
-end
-
-function Dropdown:UpdateTheme(theme)
-    self.Theme = theme
-    self.Frame.BackgroundColor3 = theme.Secondary
-    self.DropdownButton.TextColor3 = theme.Text
-    self.DropdownList.BackgroundColor3 = theme.DarkAccent
-    self.DescLabel.TextColor3 = theme.Text
-    
-    for _, button in pairs(self.OptionButtons) do
-        button.TextColor3 = theme.Text
-        button.BackgroundColor3 = theme.Secondary
-    end
-end
-
-function Dropdown:SetVisible(visible)
-    self.Visible = visible
-    self.Frame.Visible = visible
-    if not visible then
-        self.DropdownList.Visible = false
-        self.Open = false
-    end
-end
-
-function Dropdown:Add(...)
-    local options = {...}
-    for _, option in pairs(options) do
-        if not table.find(self.Options, option) then
-            table.insert(self.Options, option)
-            
-            local button = Instance.new("TextButton")
-            button.Text = option
-            button.TextColor3 = self.Theme.Text
-            button.BackgroundColor3 = self.Theme.Secondary
-            button.Parent = self.DropdownList
-            
-            button.MouseButton1Click:Connect(function()
-                if self.MultiSelect then
-                    if table.find(self.Value, option) then
-                        table.remove(self.Value, table.find(self.Value, option))
-                    else
-                        table.insert(self.Value, option)
-                    end
-                    self.DropdownButton.Text = self.Title .. ": " .. table.concat(self.Value, ", ")
-                else
-                    self.Value = option
-                    self.DropdownButton.Text = self.Title .. ": " .. option
-                    self.DropdownList.Visible = false
-                    self.Open = false
-                end
-                self.Callback(self.Value)
-            end)
-            
-            table.insert(self.OptionButtons, button)
-        end
-    end
-end
-
-function Dropdown:Remove(option)
-    local index = table.find(self.Options, option)
-    if index then
-        table.remove(self.Options, index)
-        self.OptionButtons[index]:Destroy()
-        table.remove(self.OptionButtons, index)
-        
-        if self.MultiSelect then
-            local valIndex = table.find(self.Value, option)
-            if valIndex then
-                table.remove(self.Value, valIndex)
-                self.DropdownButton.Text = self.Title .. ": " .. table.concat(self.Value, ", ")
+    return {
+        Set = function(Option)
+            if table.find(Options, Option) then
+                selectedOption = Option
+                DropdownButton.Text = Option
             end
-        elseif self.Value == option then
-            self.Value = self.Options[1] or ""
-            self.DropdownButton.Text = self.Title .. ": " .. tostring(self.Value)
-        end
-    end
-end
-
-function Dropdown:Select(option)
-    if table.find(self.Options, option) then
-        if self.MultiSelect then
-            if not table.find(self.Value, option) then
-                table.insert(self.Value, option)
-                self.DropdownButton.Text = self.Title .. ": " .. table.concat(self.Value, ", ")
-            end
-        else
-            self.Value = option
-            self.DropdownButton.Text = self.Title .. ": " .. option
-        end
-        self.Callback(self.Value)
-    end
-end
-
-function Dropdown:Set(options, clear)
-    if clear then
-        for _, button in pairs(self.OptionButtons) do
-            button:Destroy()
-        end
-        self.Options = {}
-        self.OptionButtons = {}
-        if self.MultiSelect then
-            self.Value = {}
-        else
-            self.Value = nil
-        end
-    end
-    
-    for _, option in pairs(options) do
-        if not table.find(self.Options, option) then
-            table.insert(self.Options, option)
+        end,
+        Get = function()
+            return selectedOption
+        end,
+        AddOption = function(Option)
+            table.insert(Options, Option)
             
-            local button = Instance.new("TextButton")
-            button.Text = option
-            button.TextColor3 = self.Theme.Text
-            button.BackgroundColor3 = self.Theme.Secondary
-            button.Parent = self.DropdownList
+            local OptionButton = Instance.new("TextButton")
+            OptionButton.Name = "Option_" .. option
+            OptionButton.Size = UDim2.new(1, 0, 0, 20)
+            OptionButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+            OptionButton.BorderSizePixel = 0
+            OptionButton.Text = option
+            OptionButton.TextColor3 = Library.Theme.Text
+            OptionButton.Font = Enum.Font.Gotham
+            OptionButton.TextSize = 12
+            OptionButton.Parent = DropdownList
             
-            button.MouseButton1Click:Connect(function()
-                if self.MultiSelect then
-                    if table.find(self.Value, option) then
-                        table.remove(self.Value, table.find(self.Value, option))
-                    else
-                        table.insert(self.Value, option)
-                    end
-                    self.DropdownButton.Text = self.Title .. ": " .. table.concat(self.Value, ", ")
-                else
-                    self.Value = option
-                    self.DropdownButton.Text = self.Title .. ": " .. option
-                    self.DropdownList.Visible = false
-                    self.Open = false
+            OptionButton.MouseButton1Click:Connect(function()
+                selectedOption = option
+                DropdownButton.Text = option
+                isOpen = false
+                DropdownList.Visible = false
+                DropdownList.Size = UDim2.new(0, 110, 0, 0)
+                
+                if Callback then
+                    Callback(option)
                 end
-                self.Callback(self.Value)
             end)
-            
-            table.insert(self.OptionButtons, button)
+        end
+    }
+end
+
+-- Função para adicionar um slider
+function Library:AddSlider(Parent, SliderName, Min, Max, Default, Callback)
+    local SliderContainer = Instance.new("Frame")
+    SliderContainer.Name = "Slider_" .. SliderName
+    SliderContainer.Size = UDim2.new(1, -40, 0, 60)
+    SliderContainer.Position = UDim2.new(0, 20, 0, 20)
+    SliderContainer.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+    SliderContainer.BorderSizePixel = 0
+    SliderContainer.Parent = Parent
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 5)
+    Corner.Parent = SliderContainer
+    
+    local SliderText = Instance.new("TextLabel")
+    SliderText.Name = "Text"
+    SliderText.Size = UDim2.new(0, 200, 0, 20)
+    SliderText.Position = UDim2.new(0, 10, 0, 5)
+    SliderText.BackgroundTransparency = 1
+    SliderText.Text = SliderName
+    SliderText.TextColor3 = Library.Theme.Text
+    SliderText.TextXAlignment = Enum.TextXAlignment.Left
+    SliderText.Font = Enum.Font.Gotham
+    SliderText.TextSize = 14
+    SliderText.Parent = SliderContainer
+    
+    local SliderTrack = Instance.new("Frame")
+    SliderTrack.Name = "Track"
+    SliderTrack.Size = UDim2.new(0, 400, 0, 10)
+    SliderTrack.Position = UDim2.new(0, 10, 0, 35)
+    SliderTrack.BackgroundColor3 = Color3.fromRGB(51, 51, 51)
+    SliderTrack.BorderSizePixel = 0
+    SliderTrack.Parent = SliderContainer
+    
+    local TrackCorner = Instance.new("UICorner")
+    TrackCorner.CornerRadius = UDim.new(0, 5)
+    TrackCorner.Parent = SliderTrack
+    
+    local SliderFill = Instance.new("Frame")
+    SliderFill.Name = "Fill"
+    SliderFill.Size = UDim2.new(0, 200, 1, 0)
+    SliderFill.Position = UDim2.new(0, 0, 0, 0)
+    SliderFill.BackgroundColor3 = Library.Theme.Primary
+    SliderFill.BorderSizePixel = 0
+    SliderFill.Parent = SliderTrack
+    
+    local FillCorner = Instance.new("UICorner")
+    FillCorner.CornerRadius = UDim.new(0, 5)
+    FillCorner.Parent = SliderFill
+    
+    local SliderThumb = Instance.new("Frame")
+    SliderThumb.Name = "Thumb"
+    SliderThumb.Size = UDim2.new(0, 16, 0, 16)
+    SliderThumb.Position = UDim2.new(0, 194, 0, -3)
+    SliderThumb.BackgroundColor3 = Library.Theme.Text
+    SliderThumb.BorderColor3 = Library.Theme.Primary
+    SliderThumb.BorderSizePixel = 2
+    SliderThumb.Parent = SliderTrack
+    
+    local ThumbCorner = Instance.new("UICorner")
+    ThumbCorner.CornerRadius = UDim.new(0, 8)
+    ThumbCorner.Parent = SliderThumb
+    
+    local ValueText = Instance.new("TextLabel")
+    ValueText.Name = "Value"
+    ValueText.Size = UDim2.new(0, 50, 0, 20)
+    ValueText.Position = UDim2.new(1, -60, 0, 35)
+    ValueText.BackgroundTransparency = 1
+    ValueText.Text = tostring(Default or math.floor((Min + Max) / 2))
+    ValueText.TextColor3 = Library.Theme.Text
+    ValueText.Font = Enum.Font.Gotham
+    ValueText.TextSize = 12
+    ValueText.Parent = SliderContainer
+    
+    local currentValue = Default or math.floor((Min + Max) / 2)
+    local isDragging = false
+    
+    -- Função para atualizar o slider
+    local function updateSlider(value)
+        currentValue = math.clamp(value, Min, Max)
+        local percent = (currentValue - Min) / (Max - Min)
+        SliderFill.Size = UDim2.new(0, percent * 400, 1, 0)
+        SliderThumb.Position = UDim2.new(0, percent * 400 - 8, 0, -3)
+        ValueText.Text = tostring(math.floor(currentValue))
+        
+        if Callback then
+            Callback(currentValue)
         end
     end
-end
-
-function Dropdown:Callback(func)
-    self.Callback = func or self.Callback
-end
-
-function Dropdown:Destroy()
-    self.Frame:Destroy()
-end
-
--- Slider class
-local Slider = {}
-Slider.__index = Slider
-
-function Slider.new(config, theme, scale)
-    local self = setmetatable({}, Slider)
     
-    self.Title = config.Title or "Slider"
-    self.Desc = config.Desc or ""
-    self.Min = config.Min or 0
-    self.Max = config.Max or 100
-    self.Increase = config.Increase or 1
-    self.Callback = config.Callback or function() end
-    self.Flag = config.Flag or false
-    self.Default = config.Default or ((self.Max - self.Min) / 2)
-    self.Value = self.Default
-    self.Theme = theme
-    self.Scale = scale
-    self.Visible = true
-    
-    -- Create GUI elements
-    self.Frame = Instance.new("Frame")
-    self.Frame.BackgroundColor3 = theme.Secondary
-    
-    self.SliderTrack = Instance.new("Frame")
-    self.SliderTrack.BackgroundColor3 = theme.DarkAccent
-    self.SliderTrack.Parent = self.Frame
-    
-    self.SliderFill = Instance.new("Frame")
-    self.SliderFill.BackgroundColor3 = theme.Accent
-    self.SliderFill.Parent = self.SliderTrack
-    
-    self.SliderButton = Instance.new("TextButton")
-    self.SliderButton.Text = ""
-    self.SliderButton.BackgroundColor3 = theme.LightAccent
-    self.SliderButton.Parent = self.SliderFill
-    
-    self.ValueLabel = Instance.new("TextLabel")
-    self.ValueLabel.Text = tostring(self.Value)
-    self.ValueLabel.TextColor3 = theme.Text
-    self.ValueLabel.Parent = self.Frame
-    
-    self.TitleLabel = Instance.new("TextLabel")
-    self.TitleLabel.Text = self.Title
-    self.TitleLabel.TextColor3 = theme.Text
-    self.TitleLabel.Parent = self.Frame
-    
-    self.DescLabel = Instance.new("TextLabel")
-    self.DescLabel.Text = self.Desc
-    self.DescLabel.TextColor3 = theme.Text
-    self.DescLabel.Parent = self.Frame
-    
-    -- Slider logic
-    local function updateSlider(input)
-        local pos = UDim2.new(
-            math.clamp((input.Position.X - self.SliderTrack.AbsolutePosition.X) / self.SliderTrack.AbsoluteSize.X, 0, 1),
-            0, 1, 0
-        )
-        self.SliderFill.Size = pos
-        
-        local value = math.floor((((pos.X.Scale * self.Max) / self.Increase) + 0.5) * self.Increase
-        value = math.clamp(value, self.Min, self.Max)
-        
-        if value ~= self.Value then
-            self.Value = value
-            self.ValueLabel.Text = tostring(value)
-            self.Callback(value)
-        end
-    end
-    
-    self.SliderButton.InputBegan:Connect(function(input)
+    -- Configurar eventos de arrastar
+    SliderThumb.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
+            isDragging = true
         end
     end)
     
-    self.SliderButton.InputEnded:Connect(function(input)
+    SliderThumb.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
+            isDragging = false
         end
     end)
     
     game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            updateSlider(input)
+        if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = input.Position.X
+            local sliderPos = SliderTrack.AbsolutePosition.X
+            local sliderSize = SliderTrack.AbsoluteSize.X
+            local relativePos = math.clamp(mousePos - sliderPos, 0, sliderSize)
+            local percent = relativePos / sliderSize
+            local value = Min + (Max - Min) * percent
+            updateSlider(value)
         end
     end)
     
-    -- Set initial value
-    local initialPos = UDim2.new((self.Value - self.Min) / (self.Max - self.Min), 0, 1, 0)
-    self.SliderFill.Size = initialPos
-    
-    return self
-end
-
-function Slider:UpdateTheme(theme)
-    self.Theme = theme
-    self.Frame.BackgroundColor3 = theme.Secondary
-    self.SliderTrack.BackgroundColor3 = theme.DarkAccent
-    self.SliderFill.BackgroundColor3 = theme.Accent
-    self.SliderButton.BackgroundColor3 = theme.LightAccent
-    self.ValueLabel.TextColor3 = theme.Text
-    self.TitleLabel.TextColor3 = theme.Text
-    self.DescLabel.TextColor3 = theme.Text
-end
-
-function Slider:SetVisible(visible)
-    self.Visible = visible
-    self.Frame.Visible = visible
-end
-
-function Slider:Set(title, desc)
-    self.Title = title or self.Title
-    self.Desc = desc or self.Desc
-    self.TitleLabel.Text = self.Title
-    self.DescLabel.Text = self.Desc
-end
-
-function Slider:Callback(func)
-    self.Callback = func or self.Callback
-end
-
-function Slider:Destroy()
-    self.Frame:Destroy()
-end
-
--- TextBox class
-local TextBox = {}
-TextBox.__index = TextBox
-
-function TextBox.new(config, theme, scale)
-    local self = setmetatable({}, TextBox)
-    
-    self.Title = config.Title or "Text Box"
-    self.Desc = config.Desc or ""
-    self.Default = config.Default or ""
-    self.PlaceholderText = config.PlaceholderText or "< Input >"
-    self.ClearText = config.ClearText or false
-    self.Callback = config.Callback or function() end
-    self.Value = self.Default
-    self.Theme = theme
-    self.Scale = scale
-    self.Visible = true
-    
-    -- Create GUI elements
-    self.Frame = Instance.new("Frame")
-    self.Frame.BackgroundColor3 = theme.Secondary
-    
-    self.InputBox = Instance.new("TextBox")
-    self.InputBox.Text = self.Default
-    self.InputBox.PlaceholderText = self.PlaceholderText
-    self.InputBox.TextColor3 = theme.Text
-    self.InputBox.BackgroundColor3 = theme.DarkAccent
-    self.InputBox.Parent = self.Frame
-    
-    self.TitleLabel = Instance.new("TextLabel")
-    self.TitleLabel.Text = self.Title
-    self.TitleLabel.TextColor3 = theme.Text
-    self.TitleLabel.Parent = self.Frame
-    
-    self.DescLabel = Instance.new("TextLabel")
-    self.DescLabel.Text = self.Desc
-    self.DescLabel.TextColor3 = theme.Text
-    self.DescLabel.Parent = self.Frame
-    
-    self.InputBox.FocusLost:Connect(function()
-        self.Value = self.InputBox.Text
-        self.Callback(self.Value)
+    -- Configurar clique na trilha
+    SliderTrack.MouseButton1Click:Connect(function(input)
+        local mousePos = input.Position.X
+        local sliderPos = SliderTrack.AbsolutePosition.X
+        local sliderSize = SliderTrack.AbsoluteSize.X
+        local relativePos = math.clamp(mousePos - sliderPos, 0, sliderSize)
+        local percent = relativePos / sliderSize
+        local value = Min + (Max - Min) * percent
+        updateSlider(value)
     end)
     
-    if self.ClearText then
-        self.InputBox.Focused:Connect(function()
-            self.InputBox.Text = ""
+    -- Definir valor inicial
+    updateSlider(currentValue)
+    
+    return {
+        Set = function(Value)
+            updateSlider(Value)
+        end,
+        Get = function()
+            return currentValue
+        end
+    }
+end
+
+-- Função para adicionar uma caixa de texto
+function Library:AddTextBox(Parent, TextBoxName, Placeholder, Callback)
+    local TextBoxContainer = Instance.new("Frame")
+    TextBoxContainer.Name = "TextBox_" .. TextBoxName
+    TextBoxContainer.Size = UDim2.new(1, -40, 0, 40)
+    TextBoxContainer.Position = UDim2.new(0, 20, 0, 20)
+    TextBoxContainer.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+    TextBoxContainer.BorderSizePixel = 0
+    TextBoxContainer.Parent = Parent
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 5)
+    Corner.Parent = TextBoxContainer
+    
+    local TextBoxText = Instance.new("TextLabel")
+    TextBoxText.Name = "Text"
+    TextBoxText.Size = UDim2.new(0, 200, 0, 40)
+    TextBoxText.Position = UDim2.new(0, 10, 0, 0)
+    TextBoxText.BackgroundTransparency = 1
+    TextBoxText.Text = TextBoxName
+    TextBoxText.TextColor3 = Library.Theme.Text
+    TextBoxText.TextXAlignment = Enum.TextXAlignment.Left
+    TextBoxText.Font = Enum.Font.Gotham
+    TextBoxText.TextSize = 14
+    TextBoxText.Parent = TextBoxContainer
+    
+    local InputBox = Instance.new("TextBox")
+    InputBox.Name = "Input"
+    InputBox.Size = UDim2.new(0, 110, 0, 20)
+    InputBox.Position = UDim2.new(1, -120, 0.5, -10)
+    InputBox.BackgroundColor3 = Color3.fromRGB(51, 51, 51)
+    InputBox.BorderColor3 = Library.Theme.Primary
+    InputBox.BorderSizePixel = 2
+    InputBox.PlaceholderText = Placeholder or "< Input >"
+    InputBox.PlaceholderColor3 = Color3.fromRGB(170, 170, 170)
+    InputBox.Text = ""
+    InputBox.TextColor3 = Library.Theme.Text
+    InputBox.Font = Enum.Font.Gotham
+    InputBox.TextSize = 12
+    InputBox.Parent = TextBoxContainer
+    
+    local InputCorner = Instance.new("UICorner")
+    InputCorner.CornerRadius = UDim.new(0, 5)
+    InputCorner.Parent = InputBox
+    
+    -- Configurar evento de focus perdido
+    if Callback then
+        InputBox.FocusLost:Connect(function()
+            Callback(InputBox.Text)
         end)
     end
     
-    return self
+    return {
+        Set = function(Text)
+            InputBox.Text = Text
+        end,
+        Get = function()
+            return InputBox.Text
+        end
+    }
 end
 
-function TextBox:UpdateTheme(theme)
-    self.Theme = theme
-    self.Frame.BackgroundColor3 = theme.Secondary
-    self.InputBox.TextColor3 = theme.Text
-    self.InputBox.BackgroundColor3 = theme.DarkAccent
-    self.TitleLabel.TextColor3 = theme.Text
-    self.DescLabel.TextColor3 = theme.Text
+-- Função para adicionar um rótulo de texto
+function Library:AddLabel(Parent, LabelText)
+    local Label = Instance.new("TextLabel")
+    Label.Name = "Label"
+    Label.Size = UDim2.new(1, -40, 0, 20)
+    Label.Position = UDim2.new(0, 20, 0, 20)
+    Label.BackgroundTransparency = 1
+    Label.Text = LabelText
+    Label.TextColor3 = Library.Theme.Text
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Font = Enum.Font.Gotham
+    Label.TextSize = 14
+    Label.Parent = Parent
+    
+    return Label
 end
 
-function TextBox:SetVisible(visible)
-    self.Visible = visible
-    self.Frame.Visible = visible
+-- Função para adicionar um convite do Discord
+function Library:AddDiscordInvite(Parent, ServerId, ServerIcon, ServerName)
+    local InviteContainer = Instance.new("Frame")
+    InviteContainer.Name = "DiscordInvite"
+    InviteContainer.Size = UDim2.new(1, -40, 0, 40)
+    InviteContainer.Position = UDim2.new(0, 20, 0, 20)
+    InviteContainer.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+    InviteContainer.BorderSizePixel = 0
+    InviteContainer.Parent = Parent
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 5)
+    Corner.Parent = InviteContainer
+    
+    local DiscordIcon = Instance.new("ImageLabel")
+    DiscordIcon.Name = "Icon"
+    DiscordIcon.Size = UDim2.new(0, 20, 0, 20)
+    DiscordIcon.Position = UDim2.new(0, 10, 0.5, -10)
+    DiscordIcon.BackgroundColor3 = Library.Theme.Discord
+    DiscordIcon.BorderSizePixel = 0
+    DiscordIcon.Image = ServerIcon or "rbxassetid://3926305904"
+    DiscordIcon.Parent = InviteContainer
+    
+    local IconCorner = Instance.new("UICorner")
+    IconCorner.CornerRadius = UDim.new(0, 10)
+    IconCorner.Parent = DiscordIcon
+    
+    local DiscordText = Instance.new("TextLabel")
+    DiscordText.Name = "Text"
+    DiscordText.Size = UDim2.new(0, 200, 1, 0)
+    DiscordText.Position = UDim2.new(0, 40, 0, 0)
+    DiscordText.BackgroundTransparency = 1
+    DiscordText.Text = ServerName or "Discord"
+    DiscordText.TextColor3 = Library.Theme.Text
+    DiscordText.TextXAlignment = Enum.TextXAlignment.Left
+    DiscordText.Font = Enum.Font.Gotham
+    DiscordText.TextSize = 14
+    DiscordText.Parent = InviteContainer
+    
+    local CopyButton = Instance.new("TextButton")
+    CopyButton.Name = "CopyButton"
+    CopyButton.Size = UDim2.new(0, 80, 0, 20)
+    CopyButton.Position = UDim2.new(1, -90, 0.5, -10)
+    CopyButton.BackgroundColor3 = Library.Theme.Discord
+    CopyButton.BorderSizePixel = 0
+    CopyButton.Text = "Copiar Link"
+    CopyButton.TextColor3 = Library.Theme.Text
+    CopyButton.Font = Enum.Font.Gotham
+    CopyButton.TextSize = 12
+    CopyButton.Parent = InviteContainer
+    
+    local ButtonCorner = Instance.new("UICorner")
+    ButtonCorner.CornerRadius = UDim.new(0, 5)
+    ButtonCorner.Parent = CopyButton
+    
+    -- Configurar evento de clique
+    CopyButton.MouseButton1Click:Connect(function()
+        local inviteLink = "https://discord.gg/" .. (ServerId or "invite")
+        setclipboard(inviteLink)
+        
+        -- Mostrar feedback visual
+        local originalText = CopyButton.Text
+        CopyButton.Text = "Copiado!"
+        wait(1)
+        CopyButton.Text = originalText
+    end)
+    
+    return {
+        SetServerId = function(NewId)
+            ServerId = NewId
+        end,
+        SetServerName = function(NewName)
+            DiscordText.Text = NewName
+        end,
+        SetServerIcon = function(NewIcon)
+            DiscordIcon.Image = NewIcon
+        end
+    }
 end
 
-function TextBox:Destroy()
-    self.Frame:Destroy()
-end
-
--- Initialize the library
-local function CreateLibrary()
-    return Library.new()
-end
-
-return CreateLibrary()
+return Library
